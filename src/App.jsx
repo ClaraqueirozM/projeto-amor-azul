@@ -1,270 +1,289 @@
 import React, { useState, useEffect } from 'react';
-import { client, urlFor } from './sanity';
+import { createClient } from '@sanity/client';
+import imageUrlBuilder from '@sanity/image-url';
 
-const dadosCampanhas = {
-  pascoa: {
-    titulo: "🍫 Páscoa Solidária - Edições Realizadas",
-    historico: [
-      { ano: "2025", descricao: "Distribuímos mais de 150 caixas de bombons e organizamos uma caça aos ovos para as crianças." },
-      { ano: "2024", descricao: "Primeira edição da Páscoa do projeto! Arrecadamos doações e entregamos lembrancinhas de chocolate." }
-    ]
-  },
-  criancas: {
-    titulo: "🎈 Dia das Crianças - Edições Realizadas",
-    historico: [
-      { ano: "2025", descricao: "Um dia inesquecível com cama elástica, pintura facial, pipoca e distribuição de 200 brinquedos." }
-    ]
-  },
-  natal: {
-    titulo: "🎁 Natal Azul - Edições Realizadas",
-    historico: [
-      { ano: "2025", descricao: "Apadrinhamos 80 cartinhas de Natal, entregando brinquedos novos e cestas básicas." }
-    ]
-  }
-};
+// Logótipo oficial em formato digital direto (funciona a 100% sem ficheiros externos)
+const logoUrl = "data:image/svg+xml;utf8," + encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+    <circle cx="250" cy="250" r="250" fill="#0d7a73"/>
+    <text x="250" y="160" font-family="Georgia, serif" font-size="22" fill="#ffffff" letter-spacing="6" text-anchor="middle" font-weight="bold">PROJETO SOCIAL</text>
+    <text x="250" y="275" font-family="Georgia, serif" font-size="130" fill="#ffffff" font-style="italic" text-anchor="middle">Amor</text>
+    <text x="260" y="375" font-family="Brush Script MT, cursive" font-size="115" fill="#ffffff" text-anchor="middle">azul</text>
+  </svg>
+`);
+
+const client = createClient({
+  projectId: 'is6vyrha',
+  dataset: 'production',
+  useCdn: true,
+  apiVersion: '2023-01-01',
+});
+
+const builder = imageUrlBuilder(client);
+function urlFor(source) {
+  return source ? builder.image(source) : null;
+}
 
 export default function App() {
+  const [campanhas, setCampanhas] = useState([]);
   const [modalData, setModalData] = useState(null);
-  const [pixCopiado, setPixCopiado] = useState(false);
-  const [campanhasSanity, setCampanhasSanity] = useState([]);
-  const chavePix = "amorazulprojetosocial@gmail.com";
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Busca as campanhas cadastradas no Sanity
   useEffect(() => {
+    const query = `*[_type == "campanha"] {
+      _id,
+      titulo,
+      descricaoBreve,
+      imagemCapa,
+      edicoes[] {
+        ano,
+        descricao,
+        galeria[]
+      }
+    }`;
+
     client
-      .fetch(`*[_type == "campanha"] | order(dataAcao desc)`)
+      .fetch(query)
       .then((data) => {
-        if (data) setCampanhasSanity(data);
+        setCampanhas(data);
+        setLoading(false);
       })
-      .catch((err) => console.error("Erro ao carregar dados do Sanity:", err));
+      .catch((err) => {
+        console.error('Erro ao buscar campanhas:', err);
+        setLoading(false);
+      });
   }, []);
 
-  const scrollToSection = (id) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
-  const copiarPix = () => {
-    navigator.clipboard.writeText(chavePix);
-    setPixCopiado(true);
-    setTimeout(() => setPixCopiado(false), 3000);
-  };
-
-  const getImageUrl = (imageSource) => {
-    try {
-      return imageSource ? urlFor(imageSource).width(600).url() : '';
-    } catch (e) {
-      return '';
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+    // Fundo Azul Bebé suave em todo o site
+    <div className="min-h-screen bg-sky-50 text-slate-800 font-sans">
       
-      {/* Navbar Fixo */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
+      {/* Header */}
+      <header className="bg-white/90 backdrop-blur-md border-b border-sky-200/60 sticky top-0 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <button 
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
-            className="text-xl font-bold text-blue-700 hover:opacity-80 transition cursor-pointer"
-          >
-            💙 Projeto <span className="text-blue-500">Amor Azul</span>
-          </button>
-          <nav className="space-x-6">
-            <button onClick={() => scrollToSection('sobre')} className="hover:text-blue-600 transition font-medium cursor-pointer">Qual nossa missão e quem somos?</button>
-            <button onClick={() => scrollToSection('tutorial')} className="hover:text-blue-600 transition font-medium cursor-pointer">Quero ajudar!</button>
-            <button onClick={() => scrollToSection('campanhas')} className="hover:text-blue-600 transition font-medium cursor-pointer">Nossas campanhas.</button>
-            <button onClick={() => scrollToSection('ajudar')} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium cursor-pointer">Como doar?!</button>
+          <div className="flex items-center gap-3 font-bold text-xl text-blue-600">
+            <img 
+              src={logoUrl} 
+              alt="Logo Projeto Amor Azul" 
+              className="w-10 h-10 rounded-full object-cover shadow-sm border border-sky-200" 
+            />
+            <span>Projeto Amor Azul</span>
+          </div>
+          <nav className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
+            <a href="#missao" className="hover:text-blue-600 transition">Qual nossa missão e quem somos?</a>
+            <a href="#ajudar" className="hover:text-blue-600 transition">Quero ajudar!</a>
+            <a href="#campanhas" className="hover:text-blue-600 transition">Nossas campanhas</a>
           </nav>
+          <a
+            href="#doar"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition shadow-sm"
+          >
+            Como doar?
+          </a>
         </div>
       </header>
 
-      {/* Hero Banner */}
-      <section className="bg-gradient-to-r from-blue-700 to-blue-500 text-white py-20 text-center px-4">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Missão</h1>
-          <p className="text-lg mb-8 opacity-90">Espalhar solidariedade, alegria e amor!</p>
-          <div className="flex justify-center gap-4">
-            <button onClick={() => scrollToSection('ajudar')} className="bg-white text-blue-700 font-bold px-6 py-3 rounded-lg shadow hover:bg-slate-100 transition cursor-pointer">
-              Quero Ajudar
-            </button>
-            <button onClick={() => scrollToSection('campanhas')} className="bg-blue-800 text-white font-bold px-6 py-3 rounded-lg hover:bg-blue-900 transition cursor-pointer">
-              Conheça Nossas Ações
-            </button>
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 py-12 space-y-20">
+        
+        {/* Seção Missão */}
+        <section id="missao" className="bg-white/90 rounded-2xl p-8 shadow-sm border border-sky-100 grid md:grid-cols-2 gap-8 items-center">
+          <div>
+            <span className="text-blue-600 font-bold text-sm uppercase tracking-wider">Nossa Essência</span>
+            <h2 className="text-3xl font-extrabold text-slate-900 mt-1 mb-4">Qual nossa missão e quem somos?</h2>
+            <p className="text-slate-600 leading-relaxed mb-4">
+              O <strong>Projeto Amor Azul</strong> é uma iniciativa dedicada a levar alegria, esperança e apoio a comunidades carentes através de ações solidárias contínuas ao longo do ano.
+            </p>
+            <p className="text-slate-600 leading-relaxed">
+              Nossa missão é transformar vidas e criar sorrisos por meio da união de voluntários e doadores comprometidos com o bem-estar social e o amor ao próximo.
+            </p>
           </div>
-        </div>
-      </section>
+          <div className="bg-sky-100/70 rounded-xl p-6 border border-sky-200/80 flex flex-col justify-center items-center text-center">
+            <img 
+              src={logoUrl} 
+              alt="Logo Redonda" 
+              className="w-20 h-20 rounded-full object-cover shadow-md mb-3 border-2 border-white" 
+            />
+            <h3 className="font-bold text-xl text-blue-900 mb-2">Junte-se a esta causa</h3>
+            <p className="text-blue-800 text-sm">Cada gesto de carinho faz toda a diferença na vida de centenas de crianças e famílias.</p>
+          </div>
+        </section>
 
-      {/* Sobre Nós */}
-      <section id="sobre" className="max-w-4xl mx-auto px-4 py-16 text-center scroll-mt-20">
-        <h2 className="text-3xl font-bold text-slate-900 mb-4">Sobre o Projeto</h2>
-        <p className="text-lg text-slate-600 leading-relaxed">
-          O <strong className="text-blue-600">Projeto Amor Azul</strong> nasceu do desejo de fazer a diferença na vida das crianças da nossa comunidade. Realizamos ações solidárias focadas em datas festivas, garantindo apoio, alegria e dignidade para quem mais precisa.
-        </p>
-      </section>
+        {/* Seção Como Ajudar */}
+        <section id="ajudar" className="text-center">
+          <span className="text-blue-600 font-bold text-sm uppercase tracking-wider">Faça Parte</span>
+          <h2 className="text-3xl font-extrabold text-slate-900 mt-1 mb-3">Quero ajudar!</h2>
+          <p className="text-slate-600 max-w-xl mx-auto mb-10">
+            Existem várias formas de colaborar com o Projeto Amor Azul e espalhar amor por onde passamos.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-white/90 p-6 rounded-2xl shadow-sm border border-sky-100 text-left hover:border-blue-300 transition">
+              <div className="text-3xl mb-3">🤝</div>
+              <h3 className="font-bold text-lg mb-2 text-slate-900">Seja Voluntário</h3>
+              <p className="text-slate-600 text-sm">Participe da organização, entrega de doações e eventos presenciais nas comunidades.</p>
+            </div>
+            <div className="bg-white/90 p-6 rounded-2xl shadow-sm border border-sky-100 text-left hover:border-blue-300 transition">
+              <div className="text-3xl mb-3">🎁</div>
+              <h3 className="font-bold text-lg mb-2 text-slate-900">Doação de Itens</h3>
+              <p className="text-slate-600 text-sm">Doação de chocolates na Páscoa, brinquedos no Dia das Crianças e cestas no Natal.</p>
+            </div>
+            <div className="bg-white/90 p-6 rounded-2xl shadow-sm border border-sky-100 text-left hover:border-blue-300 transition">
+              <div className="text-3xl mb-3">💸</div>
+              <h3 className="font-bold text-lg mb-2 text-slate-900">Contribuição Financeira</h3>
+              <p className="text-slate-600 text-sm">Ajude a custear os insumos e logística das nossas campanhas através de PIX.</p>
+            </div>
+          </div>
+        </section>
 
-      {/* Passo a Passo */}
-      <section id="tutorial" className="max-w-5xl mx-auto px-4 py-16 bg-white rounded-2xl border border-blue-200 my-8 shadow-sm scroll-mt-20">
-        <h2 className="text-3xl font-bold text-center text-blue-900 mb-4">Como Ajudar — Passo a Passo</h2>
-        <p className="text-center text-blue-600 mb-12">Veja como é simples fazer a diferença na vida das crianças do projeto.</p>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-blue-50 p-6 rounded-2xl border border-slate-200 text-center">
-            <div className="w-12 h-12 bg-blue-100 text-blue-700 font-bold text-xl rounded-full flex items-center justify-center mx-auto mb-4">1</div>
-            <h3 className="font-bold text-lg mb-2">Escolha uma Ação</h3>
-            <p className="text-slate-600 text-sm">Conheça nossas campanhas ativas de Páscoa, Dia das Crianças ou Natal.</p>
+        {/* Seção Campanhas / Ações Realizadas */}
+        <section id="campanhas">
+          <div className="text-center mb-12">
+            <span className="text-blue-600 font-bold text-sm uppercase tracking-wider">Histórico</span>
+            <h2 className="text-3xl font-extrabold text-slate-900 mt-1 mb-3">Ações Realizadas</h2>
+            <p className="text-slate-600 max-w-xl mx-auto">
+              Clique em uma campanha para ver as fotos e o histórico das edições anteriores.
+            </p>
           </div>
 
-          <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200 text-center">
-            <div className="w-12 h-12 bg-blue-100 text-blue-700 font-bold text-xl rounded-full flex items-center justify-center mx-auto mb-4">2</div>
-            <h3 className="font-bold text-lg mb-2">Faça sua Doação</h3>
-            <p className="text-slate-600 text-sm">Copie nossa chave PIX e contribua com qualquer valor com total segurança. Pix: {chavePix}</p>
-          </div>
-
-          <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200 text-center">
-            <div className="w-12 h-12 bg-blue-100 text-blue-700 font-bold text-xl rounded-full flex items-center justify-center mx-auto mb-4">3</div>
-            <h3 className="font-bold text-lg mb-2">Acompanhe as Entregas</h3>
-            <p className="text-slate-600 text-sm">Acompanhe pelas redes sociais as fotos e relatórios de tudo o que foi arrecadado.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Seção Campanhas */}
-      <section id="campanhas" className="bg-slate-100 py-16 px-4 scroll-mt-20">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">Ações Realizadas</h2>
-          <p className="text-slate-600 mb-10">Clique em uma campanha para ver as fotos e o histórico das edições anteriores.</p>
-
-          {/* Se houver campanhas cadastradas no Sanity, exibe elas dinamicamente com imagem */}
-          {campanhasSanity.length > 0 ? (
-            <div className="grid md:grid-cols-3 gap-6 text-left mb-10">
-              {campanhasSanity.map((item) => (
-                <div 
+          {loading ? (
+            <div className="text-center py-12 text-slate-500">Carregando campanhas...</div>
+          ) : campanhas.length === 0 ? (
+            <div className="text-center py-12 text-slate-500 bg-white/90 rounded-2xl border border-sky-100">
+              Nenhuma campanha cadastrada no momento. Acesse o Sanity Studio para adicionar.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-8">
+              {campanhas.map((item) => (
+                <div
                   key={item._id}
-                  onClick={() => setModalData({
-                    titulo: item.titulo,
-                    descricao: item.descricaoBreve,
-                    galeria: item.galeria
-                  })}
-                  className="bg-white rounded-xl shadow-sm hover:shadow-md transition cursor-pointer border border-slate-200 overflow-hidden flex flex-col justify-between"
+                  onClick={() => setModalData(item)}
+                  className="bg-white/90 rounded-2xl shadow-sm border border-sky-100 overflow-hidden hover:shadow-md hover:border-blue-300 transition cursor-pointer flex flex-col justify-between"
                 >
                   <div>
-                    {item.imagemCapa && (
-                      <img 
-                        src={getImageUrl(item.imagemCapa)} 
-                        alt={item.titulo} 
+                    {item.imagemCapa ? (
+                      <img
+                        src={urlFor(item.imagemCapa).url()}
+                        alt={item.titulo}
                         className="w-full h-48 object-cover"
                       />
+                    ) : (
+                      <div className="w-full h-48 bg-sky-100/50 flex items-center justify-center text-slate-400">
+                        Sem foto de capa
+                      </div>
                     )}
                     <div className="p-6">
-                      <h3 className="text-xl font-bold mb-2 text-slate-900">{item.titulo}</h3>
-                      {item.dataAcao && (
-                        <p className="text-xs font-bold text-blue-600 mb-2">
-                          📅 {new Date(item.dataAcao).toLocaleDateString('pt-BR')}
-                        </p>
-                      )}
-                      <p className="text-slate-600 text-sm mb-4">{item.descricaoBreve}</p>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">{item.titulo}</h3>
+                      <p className="text-slate-600 text-sm">{item.descricaoBreve}</p>
                     </div>
                   </div>
-                  <div className="p-6 pt-0">
-                    <span className="text-blue-600 font-semibold text-sm hover:underline">Ver Ações e Fotos →</span>
+                  <div className="px-6 pb-6">
+                    <span className="text-blue-600 font-semibold text-sm hover:underline">
+                      Ver Ações e Fotos →
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            /* Cards Estáticos Padrão */
-            <div className="grid md:grid-cols-3 gap-6">
-              <div onClick={() => setModalData(dadosCampanhas.pascoa)} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer border border-slate-200">
-                <div className="text-4xl mb-3">🍫</div>
-                <h3 className="text-xl font-bold mb-2">Páscoa Solidária</h3>
-                <p className="text-slate-600 text-sm mb-4">Arrecadação de chocolates e ovos de Páscoa para adoçar o dia das crianças e registros de entrega.</p>
-                <span className="text-blue-600 font-semibold hover:underline">Ver Ações Realizadas →</span>
-              </div>
-
-              <div onClick={() => setModalData(dadosCampanhas.criancas)} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer border border-slate-200">
-                <div className="text-4xl mb-3">🎈</div>
-                <h3 className="text-xl font-bold mb-2">Dia das Crianças</h3>
-                <p className="text-slate-600 text-sm mb-4">Gincanas, brincadeiras e distribuição de brinquedos na comunidade.</p>
-                <span className="text-blue-600 font-semibold hover:underline">Ver Ações Realizadas →</span>
-              </div>
-
-              <div onClick={() => setModalData(dadosCampanhas.natal)} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer border border-slate-200">
-                <div className="text-4xl mb-3">🎁</div>
-                <h3 className="text-xl font-bold mb-2">Natal!</h3>
-                <p className="text-slate-600 text-sm mb-4">Presentes e ações festivas de fim de ano.</p>
-                <span className="text-blue-600 font-semibold hover:underline">Ver Ações Realizadas →</span>
-              </div>
-            </div>
           )}
-        </div>
-      </section>
+        </section>
 
-      {/* Modal Dinâmico com suporte para Histórico e Fotos */}
+        {/* Seção Como Doar */}
+        <section id="doar" className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl p-8 md:p-12 text-center shadow-lg">
+          <span className="bg-blue-500/50 text-blue-100 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Faça a diferença</span>
+          <h2 className="text-3xl font-extrabold mt-3 mb-4">Faça uma Doação via PIX</h2>
+          <p className="max-w-xl mx-auto text-blue-100 mb-6 text-sm">
+            Sua contribuição é fundamental para mantermos nossas campanhas de Páscoa, Dia das Crianças e Natal ativas.
+          </p>
+          <div className="bg-white text-slate-900 inline-block px-6 py-4 rounded-xl shadow-md">
+            <span className="text-xs text-slate-500 block mb-1">Chave PIX (E-mail)</span>
+            <span className="font-mono font-bold text-lg text-blue-600">amorazulprojetosocial@gmail.com</span>
+          </div>
+        </section>
+
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white/80 border-t border-sky-100 mt-20 py-8 text-center text-slate-500 text-sm">
+        <p>© 2026 Projeto Amor Azul. Todos os direitos reservados.</p>
+      </footer>
+
+      {/* Modal de Histórico e Galeria da Campanha */}
       {modalData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white max-w-lg w-full rounded-xl p-6 relative shadow-xl max-h-[85vh] overflow-y-auto">
-            <button onClick={() => setModalData(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-2xl font-bold cursor-pointer">&times;</button>
-            <h3 className="text-2xl font-bold text-slate-900 mb-4">{modalData.titulo}</h3>
-            
-            {modalData.descricao && (
-              <p className="text-slate-600 text-sm mb-4">{modalData.descricao}</p>
-            )}
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl relative p-6 md:p-8">
+            <button
+              onClick={() => setModalData(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full w-8 h-8 flex items-center justify-center font-bold"
+            >
+              ✕
+            </button>
 
-            {modalData.historico && (
-              <div className="space-y-4">
-                {modalData.historico.map((item, idx) => (
+            <h2 className="text-2xl font-bold text-slate-900 mb-6 border-b pb-3 border-sky-100">
+              {modalData.titulo} - Edições Realizadas
+            </h2>
+
+            {modalData.edicoes && modalData.edicoes.length > 0 ? (
+              <div className="space-y-8">
+                {modalData.edicoes.map((edicao, idx) => (
                   <div key={idx} className="border-l-4 border-blue-600 pl-4 py-1">
-                    <h4 className="font-bold text-slate-800">Ano {item.ano}</h4>
-                    <p className="text-slate-600 text-sm">{item.descricao}</p>
+                    <h3 className="font-bold text-lg text-slate-900">Ano {edicao.ano}</h3>
+                    {edicao.descricao && (
+                      <p className="text-slate-600 text-sm mt-1 mb-4">{edicao.descricao}</p>
+                    )}
+
+                    {edicao.galeria && edicao.galeria.length > 0 && (
+                      <div>
+                        <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-2">
+                          Galeria de Fotos ({edicao.ano}) — Clique para ampliar:
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {edicao.galeria.map((foto, fIdx) => (
+                            <img
+                              key={fIdx}
+                              src={urlFor(foto).url()}
+                              alt={`Foto ${modalData.titulo} ${edicao.ano}`}
+                              onClick={() => setSelectedImage(urlFor(foto).url())}
+                              className="w-full h-28 object-cover rounded-lg border border-slate-200 hover:scale-105 transition-transform cursor-pointer shadow-sm"
+                              title="Clique para ver em tela cheia"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            )}
-
-            {modalData.galeria && modalData.galeria.length > 0 && (
-              <div className="mt-4">
-                <h4 className="font-bold text-slate-800 mb-2">Galeria de Fotos:</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {modalData.galeria.map((foto, idx) => (
-                    <img 
-                      key={idx} 
-                      src={getImageUrl(foto)} 
-                      alt={`Foto ${idx + 1}`} 
-                      className="w-full h-28 object-cover rounded-lg border border-slate-200"
-                    />
-                  ))}
-                </div>
-              </div>
+            ) : (
+              <p className="text-slate-500 text-sm py-4">
+                Nenhuma edição cadastrada para esta ação ainda.
+              </p>
             )}
           </div>
         </div>
       )}
 
-      {/* Como Ajudar / PIX */}
-      <section id="ajudar" className="max-w-4xl mx-auto px-4 py-16 text-center scroll-mt-20">
-        <h2 className="text-3xl font-bold text-slate-900 mb-6">Como Ajudar</h2>
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-8 max-w-md mx-auto shadow-sm">
-          <h3 className="text-xl font-bold text-blue-900 mb-2">Faça uma Doação via PIX</h3>
-          <p className="text-sm text-slate-600 mb-6">Qualquer valor ajuda a comprar brinquedos, alimentos e doces para as próximas ações.</p>
-          
-          <div className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm font-semibold text-slate-700 truncate">{chavePix}</span>
-            <button onClick={copiarPix} className={`px-4 py-2 text-sm font-bold text-white rounded-md transition cursor-pointer ${pixCopiado ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-              {pixCopiado ? 'Copiado!' : 'Copiar'}
+      {/* Lightbox / Visualizador em Tela Cheia */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-5xl max-h-[90vh] w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 text-white bg-white/20 hover:bg-white/40 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition"
+            >
+              ✕
             </button>
+            <img
+              src={selectedImage}
+              alt="Visualização em Tela Cheia"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            />
           </div>
-          {pixCopiado && <p className="text-xs text-green-600 font-medium">✓ Chave PIX copiada para a área de transferência!</p>}
         </div>
-      </section>
-
-      {/* Rodapé */}
-      <footer className="bg-slate-900 text-slate-400 py-6 text-center text-sm border-t border-slate-800">
-        <p>&copy; Projeto Amor Azul. Criado com dedicação para a comunidade.</p>
-      </footer>
-
+      )}
     </div>
   );
 }
