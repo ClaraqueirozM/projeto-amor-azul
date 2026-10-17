@@ -1,3 +1,4 @@
-import campanha from '../src/schema/campanha';
+import campanha from './campanha';
+import depoimento from './depoimento';
 
-export const schemaTypes = [campanha];
+export const schemaTypes = [campanha, depoimento];
